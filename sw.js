@@ -1,4 +1,4 @@
-const CACHE = 'receipt-budget-v2'; // change the number when you update any file
+const CACHE = 'receipt-budget-v3'; // change the number when you update any file
 const FILES = [
   './', './index.html', './manifest.json',
   './icon-180.png', './icon-192.png', './icon-512.png',
