@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Receipt Budget</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: #111; color: #fff; font-family: -apple-system, system-ui, Roboto, sans-serif; }
+  #app { max-width: 480px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+         padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 16px); }
+  .month { color: #aaa; font-size: 16px; margin-bottom: 12px; }
+  .card { background: #1e1e1e; border-radius: 20px; padding: 20px; cursor: pointer; }
+  .label { color: #888; font-size: 12px; letter-spacing: 1px; }
+  .big { font-size: 42px; font-weight: 700; margin: 8px 0; }
+  .big.over { color: #ff6b6b; }
+  .barbg { height: 10px; border-radius: 5px; background: #333; overflow: hidden; }
+  .bar { height: 10px; border-radius: 5px; background: #4cd98a; width: 0; transition: width .4s; }
+  .row { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; color: #bbb; }
+  .hint { color: #555; font-size: 11px; text-align: center; margin-top: 10px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 24px 0 8px; }
+  #list { flex: 1; }
+  .empty { color: #666; text-align: center; margin-top: 20px; }
+  .item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #222; }
+  .item .d { flex: 1; color: #aaa; font-size: 15px; }
+  .item .a { color: #ff8a8a; font-weight: 600; font-size: 16px; margin-right: 12px; }
+  .item button { background: none; border: 0; color: #666; font-size: 20px; padding: 4px 8px; }
+  .scan { display: block; width: 100%; background: #3b82f6; color: #fff; border: 0; border-radius: 16px; padding: 18px;
+          font-size: 17px; font-weight: 600; text-align: center; margin-top: 16px; }
+  .scan[aria-busy="true"] { opacity: .7; }
+  .tools { display: flex; justify-content: center; gap: 20px; margin-top: 14px; }
+  .tools button { background: none; border: 0; color: #666; font-size: 12px; text-decoration: underline; }
+  .overlay { position: fixed; inset: 0; background: #000b; display: none; align-items: center; justify-content: center; padding: 30px; z-index: 10; }
+  .overlay.show { display: flex; }
+  .modal { background: #222; border-radius: 20px; padding: 24px; width: 100%; max-width: 380px; }
+  .modal h3 { margin: 0; font-size: 20px; }
+  .modal p { color: #999; margin: 4px 0 0; font-size: 14px; }
+  .modal input { width: 100%; background: #333; color: #fff; border: 0; border-radius: 12px; padding: 14px; font-size: 28px;
+                 text-align: center; margin: 16px 0; }
+  .btns { display: flex; gap: 8px; }
+  .btns button { flex: 1; border: 0; border-radius: 12px; padding: 14px; font-size: 17px; font-weight: 600; color: #fff; background: #444; }
+  .btns .go { background: #4cd98a; color: #111; }
+  .tip { background: #1e1e1e; color: #bbb; border-radius: 12px; padding: 12px 14px; font-size: 13px; margin-bottom: 12px; display: none; }
+  .tip.show { display: block; }
+  .tip button { float: right; background: none; border: 0; color: #888; font-size: 16px; }
+  #status { color: #bbb; font-size: 14px; text-align: center; margin-top: 10px; min-height: 18px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="tip" id="tip"><button id="tipx" aria-label="Close">×</button>To install: tap the Share button in Safari, then <b>Add to Home Screen</b>.</div>
+  <div class="month" id="month"></div>
+  <div class="card" id="card">
+    <div class="label">REMAINING BUDGET</div>
+    <div class="big" id="remaining">₱0.00</div>
+    <div class="barbg"><div class="bar" id="bar"></div></div>
+    <div class="row"><span id="spent"></span><span id="budget"></span></div>
+    <div class="hint">tap to change budget</div>
+  </div>
+  <h2>This month's receipts</h2>
+  <div id="list"></div>
+  <div id="status"></div>
+  <button class="scan" id="scanBtn">📷  Scan receipt</button>
+  <input type="file" id="file" accept="image/*" capture="environment" hidden>
+  <div class="tools">
+    <button id="backup">Save backup</button>
+    <button id="restore">Restore backup</button>
+    <input type="file" id="restoreFile" accept="application/json" hidden>
+  </div>
+</div>
+
+<div class="overlay" id="confirm">
+  <div class="modal">
+    <h3>Detected total</h3>
+    <p id="confirmMsg">Check it matches your receipt</p>
+    <input id="amount" type="text" inputmode="decimal" autocomplete="off">
+    <div class="btns"><button id="cancel">Cancel</button><button class="go" id="add">Add</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="budgetBox">
+  <div class="modal">
+    <h3>Monthly budget</h3>
+    <input id="budgetInput" type="text" inputmode="decimal" placeholder="15000" autocomplete="off">
+    <div class="btns"><button id="budgetCancel">Cancel</button><button class="go" id="budgetSave">Save</button></div>
+  </div>
+</div>
+
+<script src="ocr/tesseract.min.js"></script>
+<script>
+const CURRENCY = '₱';
+const KEY = 'receipt-budget-v1';
+const $ = (id) => document.getElementById(id);
+
+let data = { budget: 0, expenses: [] };
+try { data = Object.assign(data, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} };
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+
+const money = (n) => CURRENCY + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const mk = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+
+function render() {
+  const now = new Date();
+  $('month').textContent = now.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+  const mine = data.expenses.filter((e) => mk(new Date(e.date)) === mk(now));
+  const spent = mine.reduce((s, e) => s + e.amount, 0);
+  const remaining = data.budget - spent;
+  const pct = data.budget > 0 ? Math.min(spent / data.budget, 1) : 0;
+  $('remaining').textContent = money(remaining);
+  $('remaining').classList.toggle('over', remaining < 0);
+  $('spent').textContent = 'Spent ' + money(spent);
+  $('budget').textContent = 'Budget ' + money(data.budget);
+  const bar = $('bar');
+  bar.style.width = (pct * 100) + '%';
+  bar.style.background = remaining < 0 ? '#ff6b6b' : pct > 0.8 ? '#ffb347' : '#4cd98a';
+  const list = $('list');
+  list.innerHTML = '';
+  if (!mine.length) { list.innerHTML = '<div class="empty">No receipts yet. Tap Scan receipt to add one.</div>'; return; }
+  mine.sort((a, b) => b.date.localeCompare(a.date)).forEach((e) => {
+    const row = document.createElement('div');
+    row.className = 'item';
+    row.innerHTML = '<span class="d">' + new Date(e.date).toLocaleDateString() + '</span><span class="a">- ' + money(e.amount) + '</span>';
+    const del = document.createElement('button');
+    del.textContent = '🗑';
+    del.setAttribute('aria-label', 'Delete');
+    del.onclick = () => {
+      if (confirm('Delete this expense?')) { data.expenses = data.expenses.filter((x) => x.id !== e.id); save(); render(); }
+    };
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+// ---------- budget ----------
+$('card').onclick = () => { $('budgetInput').value = data.budget || ''; $('budgetBox').classList.add('show'); };
+$('budgetCancel').onclick = () => $('budgetBox').classList.remove('show');
+$('budgetSave').onclick = () => {
+  const v = parseFloat($('budgetInput').value.replace(/,/g, ''));
+  if (v > 0) { data.budget = v; save(); render(); }
+  $('budgetBox').classList.remove('show');
+};
+
+// ---------- scanning ----------
+let workerPromise = null;
+function getWorker() {
+  if (!workerPromise) {
+    const abs = (p) => new URL(p, location.href).href;
+    workerPromise = Tesseract.createWorker('eng', 1, {
+      workerPath: abs('ocr/worker.min.js'),
+      corePath: abs('ocr/core'),
+      langPath: abs('ocr/lang'),
+      workerBlobURL: false,
+      logger: (m) => { if (m.status === 'recognizing text') $('status').textContent = 'Reading receipt… ' + Math.round(m.progress * 100) + '%'; },
+    });
+  }
+  return workerPromise;
+}
+
+// shrink + grayscale + stretch contrast so the OCR reads receipts better
+async function prepare(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch (e) {
+    bmp = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+  }
+  const w0 = bmp.width, h0 = bmp.height, scale = Math.min(1, 1800 / Math.max(w0, h0));
+  const c = document.createElement('canvas');
+  c.width = Math.round(w0 * scale); c.height = Math.round(h0 * scale);
+  const ctx = c.getContext('2d');
+  ctx.drawImage(bmp, 0, 0, c.width, c.height);
+  const img = ctx.getImageData(0, 0, c.width, c.height), px = img.data;
+  let lo = 255, hi = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    const g = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) | 0;
+    px[i] = px[i + 1] = px[i + 2] = g;
+    if (g < lo) lo = g; if (g > hi) hi = g;
+  }
+  const range = Math.max(hi - lo, 1);
+  for (let i = 0; i < px.length; i += 4) { const v = ((px[i] - lo) * 255 / range) | 0; px[i] = px[i + 1] = px[i + 2] = v; }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+function findTotal(text) {
+  const dec = /\d{1,3}(?:,\d{3})*\.\d{2}|\d+\.\d{2}/g;
+  const toNum = (s) => parseFloat(s.replace(/,/g, ''));
+  let found = null;
+  for (const line of text.split(/\r?\n/)) {
+    if (/sub\s*-?\s*total/i.test(line)) continue;
+    if (/grand\s*total|total\s*due|amount\s*due|balance\s*due|total/i.test(line)) {
+      const n = line.match(dec);
+      if (n) found = toNum(n[n.length - 1]);
+    }
+  }
+  if (found) return found;
+  const all = (text.match(dec) || []).map(toNum);
+  return all.length ? Math.max(...all) : 0;
+}
+
+$('scanBtn').onclick = () => $('file').click();
+$('file').onchange = async (ev) => {
+  const f = ev.target.files[0];
+  ev.target.value = '';
+  if (!f) return;
+  const btn = $('scanBtn');
+  btn.setAttribute('aria-busy', 'true');
+  btn.disabled = true;
+  $('status').textContent = 'Loading reader…';
+  try {
+    const canvas = await prepare(f);
+    const worker = await getWorker();
+    const { data: out } = await worker.recognize(canvas);
+    const total = findTotal(out.text || '');
+    $('confirmMsg').textContent = total ? 'Check it matches your receipt' : "Couldn't find a total. Type it from the receipt.";
+    $('amount').value = total ? total.toFixed(2) : '';
+    $('confirm').classList.add('show');
+  } catch (e) {
+    alert('Scan failed. Try again with the whole receipt in the photo.');
+  }
+  $('status').textContent = '';
+  btn.removeAttribute('aria-busy');
+  btn.disabled = false;
+};
+$('cancel').onclick = () => $('confirm').classList.remove('show');
+$('add').onclick = () => {
+  const v = parseFloat($('amount').value.replace(/,/g, ''));
+  if (v > 0) {
+    data.expenses.push({ id: String(Date.now()), amount: v, date: new Date().toISOString() });
+    save(); render();
+  }
+  $('confirm').classList.remove('show');
+};
+
+// ---------- backup ----------
+$('backup').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  a.download = 'receipt-budget-backup.json';
+  a.click();
+};
+$('restore').onclick = () => $('restoreFile').click();
+$('restoreFile').onchange = async (ev) => {
+  const f = ev.target.files[0];
+  ev.target.value = '';
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (typeof d.budget !== 'number' || !Array.isArray(d.expenses)) throw 0;
+    if (confirm('Replace what is on this phone with the backup?')) { data = d; save(); render(); }
+  } catch (e) { alert("That file isn't a valid backup."); }
+};
+
+// ---------- start ----------
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+if (isIOS && !standalone && !localStorage.getItem('tip-closed')) $('tip').classList.add('show');
+$('tipx').onclick = () => { $('tip').classList.remove('show'); localStorage.setItem('tip-closed', '1'); };
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+render();
+if (!data.budget) $('card').click();
+</script>
+</body>
+</html>
