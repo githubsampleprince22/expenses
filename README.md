@@ -1,21 +1,22 @@
 # Receipt Budget (web app)
 
-Runs fully on the phone. No server, no keys, no laptop needed once it is hosted.
+Runs fully on any phone or browser. Now powered by **Supabase** for multi-user shared expenses and real-time synchronization, with offline scanning support.
 
 ## Put it online free (GitHub Pages)
-1. Create a new GitHub repository (public), e.g. `receipt-budget`.
-2. Upload everything in this folder, keeping the `ocr` folder as it is.
-   (The `ocr` folder holds the offline scanner; the largest files are about 4 MB each, which is fine.)
-3. Repository Settings > Pages > Source: "Deploy from a branch", branch `main`, folder `/ (root)`. Save.
-4. After a minute your link appears: `https://YOURNAME.github.io/receipt-budget/`
+1. Push this folder to your GitHub repository.
+2. In your repo, go to **Settings** > **Pages** > **Source**: "Deploy from a branch", branch `main`, folder `/ (root)`. Save.
+3. Your live link appears: `https://YOURNAME.github.io/receipt-budget/`
 
-## Install on each iPhone
-1. Open the link in **Safari** (it must be Safari).
-2. Tap Share > **Add to Home Screen**.
-3. Open it from the new home-screen icon. The first launch needs internet to download the scanner (about 11 MB); after that it works offline.
+## Multi-User Sharing (Supabase)
+- All expenses, receipts, and the monthly budget sync automatically to your Supabase project in real time.
+- By default, all phones connect to the shared code `our-budget`.
+- To use a custom family or group code, tap **👥 Code: our-budget** under tools and enter a code (e.g. `garcia-family`). Any device using the same code shares the same budget!
+- When offline, scanning and manual entries still work; they automatically sync to Supabase once an internet connection is restored.
+
+## Install on iPhone / Android
+1. Open your link in **Safari** (iOS) or **Chrome** (Android).
+2. Tap Share / Menu > **Add to Home Screen**.
+3. Launch from the new home screen icon.
 
 ## Updating later
-Upload the changed files to GitHub, then change `CACHE = 'receipt-budget-v1'` in sw.js to `v2` so phones fetch the new version.
-
-## Backups
-Data lives only on that phone. Use "Save backup" now and then, and "Restore backup" to move it to a new phone.
+Upload changed files to GitHub, then bump the `CACHE` version in `sw.js` (and the `?v=` tag in `index.html`) so phones fetch the latest version.

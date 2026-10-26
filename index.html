@@ -1,472 +1,1176 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Budget">
-<meta name="theme-color" content="#111111">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-180.png">
-<title>Receipt Budget</title>
-<style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: #111; color: #fff; font-family: -apple-system, system-ui, Roboto, sans-serif; }
-  #app { max-width: 480px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
-         padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 16px); }
-  .month { color: #aaa; font-size: 16px; margin-bottom: 12px; }
-  .card { background: #1e1e1e; border-radius: 20px; padding: 20px; cursor: pointer; }
-  .label { color: #888; font-size: 12px; letter-spacing: 1px; }
-  .big { font-size: 42px; font-weight: 700; margin: 8px 0; }
-  .big.over { color: #ff6b6b; }
-  .barbg { height: 10px; border-radius: 5px; background: #333; overflow: hidden; }
-  .bar { height: 10px; border-radius: 5px; background: #4cd98a; width: 0; transition: width .4s; }
-  .row { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; color: #bbb; }
-  .hint { color: #555; font-size: 11px; text-align: center; margin-top: 10px; }
-  h2 { font-size: 18px; font-weight: 600; margin: 24px 0 8px; }
-  #list { flex: 1; }
-  .empty { color: #666; text-align: center; margin-top: 20px; }
-  .item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #222; }
-  .item .info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .item .info .desc { color: #fff; font-size: 15px; font-weight: 500; word-break: break-word; }
-  .item .info .d { color: #777; font-size: 12px; }
-  .item .a { color: #ff8a8a; font-weight: 600; font-size: 16px; margin-right: 12px; white-space: nowrap; }
-  .item button { background: none; border: 0; color: #666; font-size: 20px; padding: 4px 8px; cursor: pointer; }
-  .item button:active { color: #ff6b6b; }
-  .actions { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
-  .scan { display: block; width: 100%; background: #3b82f6; color: #fff; border: 0; border-radius: 16px; padding: 16px;
-          font-size: 16px; font-weight: 600; text-align: center; cursor: pointer; }
-  .scan[aria-busy="true"] { opacity: .7; }
-  .manual-btn { display: block; width: 100%; background: #222; color: #fff; border: 1px solid #333; border-radius: 16px;
-                padding: 14px; font-size: 15px; font-weight: 500; text-align: center; cursor: pointer; transition: background .2s; }
-  .manual-btn:active { background: #333; }
-  .tools { display: flex; justify-content: center; gap: 18px; margin-top: 14px; flex-wrap: wrap; }
-  .tools button { background: none; border: 0; color: #777; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px; }
-  .tools button:active { color: #aaa; }
-  .tools button.update-btn { color: #60a5fa; font-weight: 600; text-decoration: none; }
-  .overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); display: none; align-items: flex-start; justify-content: center;
-             padding: 20px 14px; z-index: 100; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .overlay.show { display: flex; }
-  .modal { background: #1e1e1e; border: 1px solid #333; border-radius: 20px; padding: 22px; width: 100%; max-width: 400px;
-           margin: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); box-sizing: border-box; }
-  .modal h3 { margin: 0; font-size: 20px; }
-  .modal p { color: #999; margin: 4px 0 12px; font-size: 13px; }
-  .field-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; font-weight: 600; margin: 10px 0 5px; }
-  .modal input { width: 100%; background: #2a2a2a; color: #fff; border: 1px solid #3a3a3a; border-radius: 12px; padding: 14px; font-size: 28px;
-                 font-weight: 700; text-align: center; margin: 0 0 12px; }
-  .modal input:focus { border-color: #3b82f6; outline: none; }
-  .modal input.desc-input { font-size: 15px; font-weight: 400; text-align: left; padding: 12px 14px; margin: 0 0 14px; background: #262626; }
-  .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 0 12px; }
-  .cat-btn { background: #262626; color: #bbb; border: 1px solid #3a3a3a; border-radius: 10px; padding: 10px 4px;
-             font-size: 13px; font-weight: 500; cursor: pointer; text-align: center; transition: all .15s ease;
-             display: flex; align-items: center; justify-content: center; gap: 4px; user-select: none; }
-  .cat-btn:active { transform: scale(0.97); }
-  .cat-btn.selected { background: #1e3a5f; color: #60a5fa; border-color: #3b82f6; font-weight: 600; box-shadow: 0 0 0 1px #3b82f6; }
-  .cat-pill { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; background: #1e293b; color: #93c5fd;
-              padding: 2px 7px; border-radius: 6px; font-weight: 500; border: 1px solid rgba(59,130,246,0.3); }
-  .btns { display: flex; gap: 8px; margin-top: 4px; }
-  .btns button { flex: 1; border: 0; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 600; color: #fff; background: #333; cursor: pointer; }
-  .btns .go { background: #4cd98a; color: #111; }
-  .btns button:active { opacity: .85; }
-  .tip { background: #1e1e1e; color: #bbb; border-radius: 12px; padding: 12px 14px; font-size: 13px; margin-bottom: 12px; display: none; }
-  .tip.show { display: block; }
-  .tip button { float: right; background: none; border: 0; color: #888; font-size: 16px; }
-  #status { color: #bbb; font-size: 14px; text-align: center; margin-top: 10px; min-height: 18px; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Budget">
+  <meta name="theme-color" content="#111111">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <title>Receipt Budget</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      background: #111;
+      color: #fff;
+      font-family: -apple-system, system-ui, Roboto, sans-serif;
+    }
+
+    #app {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 16px);
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .month {
+      color: #aaa;
+      font-size: 16px;
+      margin-bottom: 0;
+    }
+
+    .cloud-pill {
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 12px;
+      background: #1e293b;
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      user-select: none;
+      transition: all .2s;
+    }
+
+    .cloud-pill.syncing {
+      background: #3b2d18;
+      color: #fbbf24;
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .cloud-pill.offline {
+      background: #27272a;
+      color: #a1a1aa;
+      border-color: rgba(161, 161, 170, 0.2);
+    }
+
+    .cloud-pill.error {
+      background: #3a1d1d;
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.3);
+    }
+
+    .card {
+      background: #1e1e1e;
+      border-radius: 20px;
+      padding: 20px;
+      cursor: pointer;
+    }
+
+    .label {
+      color: #888;
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    .big {
+      font-size: 42px;
+      font-weight: 700;
+      margin: 8px 0;
+    }
+
+    .big.over {
+      color: #ff6b6b;
+    }
+
+    .barbg {
+      height: 10px;
+      border-radius: 5px;
+      background: #333;
+      overflow: hidden;
+    }
+
+    .bar {
+      height: 10px;
+      border-radius: 5px;
+      background: #4cd98a;
+      width: 0;
+      transition: width .4s;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #bbb;
+    }
+
+    .hint {
+      color: #555;
+      font-size: 11px;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 24px 0 8px;
+    }
+
+    #list {
+      flex: 1;
+    }
+
+    .empty {
+      color: #666;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .item {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #222;
+    }
+
+    .item .info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .item .info .desc {
+      color: #fff;
+      font-size: 15px;
+      font-weight: 500;
+      word-break: break-word;
+    }
+
+    .item .info .d {
+      color: #777;
+      font-size: 12px;
+    }
+
+    .item .a {
+      color: #ff8a8a;
+      font-weight: 600;
+      font-size: 16px;
+      margin-right: 12px;
+      white-space: nowrap;
+    }
+
+    .item button {
+      background: none;
+      border: 0;
+      color: #666;
+      font-size: 20px;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+
+    .item button:active {
+      color: #ff6b6b;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .scan {
+      display: block;
+      width: 100%;
+      background: #3b82f6;
+      color: #fff;
+      border: 0;
+      border-radius: 16px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .scan[aria-busy="true"] {
+      opacity: .7;
+    }
+
+    .manual-btn {
+      display: block;
+      width: 100%;
+      background: #222;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 16px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 500;
+      text-align: center;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .manual-btn:active {
+      background: #333;
+    }
+
+    .tools {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .tools button {
+      background: none;
+      border: 0;
+      color: #777;
+      font-size: 12px;
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .tools button:active {
+      color: #aaa;
+    }
+
+    .tools button.update-btn {
+      color: #60a5fa;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 20px 14px;
+      z-index: 100;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 20px;
+      padding: 22px;
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      box-sizing: border-box;
+    }
+
+    .modal h3 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .modal p {
+      color: #999;
+      margin: 4px 0 12px;
+      font-size: 13px;
+    }
+
+    .field-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      font-weight: 600;
+      margin: 10px 0 5px;
+    }
+
+    .modal input {
+      width: 100%;
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #3a3a3a;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+      margin: 0 0 12px;
+    }
+
+    .modal input:focus {
+      border-color: #3b82f6;
+      outline: none;
+    }
+
+    .modal input.desc-input {
+      font-size: 15px;
+      font-weight: 400;
+      text-align: left;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      background: #262626;
+    }
+
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin: 0 0 12px;
+    }
+
+    .cat-btn {
+      background: #262626;
+      color: #bbb;
+      border: 1px solid #3a3a3a;
+      border-radius: 10px;
+      padding: 10px 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      user-select: none;
+    }
+
+    .cat-btn:active {
+      transform: scale(0.97);
+    }
+
+    .cat-btn.selected {
+      background: #1e3a5f;
+      color: #60a5fa;
+      border-color: #3b82f6;
+      font-weight: 600;
+      box-shadow: 0 0 0 1px #3b82f6;
+    }
+
+    .cat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      background: #1e293b;
+      color: #93c5fd;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-weight: 500;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .btns button {
+      flex: 1;
+      border: 0;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      background: #333;
+      cursor: pointer;
+    }
+
+    .btns .go {
+      background: #4cd98a;
+      color: #111;
+    }
+
+    .btns button:active {
+      opacity: .85;
+    }
+
+    .tip {
+      background: #1e1e1e;
+      color: #bbb;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .tip.show {
+      display: block;
+    }
+
+    .tip button {
+      float: right;
+      background: none;
+      border: 0;
+      color: #888;
+      font-size: 16px;
+    }
+
+    #status {
+      color: #bbb;
+      font-size: 14px;
+      text-align: center;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+  </style>
 </head>
+
 <body>
-<div id="app">
-  <div class="tip" id="tip"><button id="tipx" aria-label="Close">×</button>To install: tap the Share button in Safari, then <b>Add to Home Screen</b>.</div>
-  <div class="month" id="month"></div>
-  <div class="card" id="card">
-    <div class="label">REMAINING BUDGET</div>
-    <div class="big" id="remaining">₱0.00</div>
-    <div class="barbg"><div class="bar" id="bar"></div></div>
-    <div class="row"><span id="spent"></span><span id="budget"></span></div>
-    <div class="hint">tap to change budget</div>
-  </div>
-  <h2>This month's receipts</h2>
-  <div id="list"></div>
-  <div id="status"></div>
-  <div class="actions">
-    <button class="scan" id="scanBtn">📷  Scan receipt / paper</button>
-    <button class="manual-btn" id="manualBtn">✏️  Enter manually</button>
-  </div>
-  <input type="file" id="file" accept="image/*" capture="environment" hidden>
-  <div class="tools">
-    <button id="backup">Save backup</button>
-    <button id="restore">Restore backup</button>
-    <button id="forceUpdate" class="update-btn">🔄 Refresh app</button>
-    <input type="file" id="restoreFile" accept="application/json" hidden>
-  </div>
-</div>
-
-<div class="overlay" id="confirm">
-  <div class="modal">
-    <h3 id="modalTitle">Add expense</h3>
-    <p id="confirmMsg">Enter amount and choose category</p>
-    
-    <div class="field-label">Amount (₱)</div>
-    <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
-    
-    <div class="field-label">Category</div>
-    <div class="cat-grid" id="catGrid">
-      <button type="button" class="cat-btn selected" data-cat="Groceries">🛒 Groceries</button>
-      <button type="button" class="cat-btn" data-cat="Food">🍔 Food</button>
-      <button type="button" class="cat-btn" data-cat="Bills">💡 Bills</button>
-      <button type="button" class="cat-btn" data-cat="Insurance">🛡️ Insurance</button>
-      <button type="button" class="cat-btn" data-cat="Transport">🚗 Transport</button>
-      <button type="button" class="cat-btn" data-cat="Shopping">🛍️ Shopping</button>
-      <button type="button" class="cat-btn" data-cat="Health">💊 Health</button>
-      <button type="button" class="cat-btn" data-cat="Personal">✨ Personal</button>
-      <button type="button" class="cat-btn" data-cat="Other">📦 Other</button>
+  <div id="app">
+    <div class="tip" id="tip"><button id="tipx" aria-label="Close">×</button>To install: tap the Share button in Safari,
+      then <b>Add to Home Screen</b>.</div>
+    <div class="header-row">
+      <div class="month" id="month"></div>
+      <div class="cloud-pill" id="cloudStatus" title="Tap to sync with Supabase">☁️ Synced</div>
     </div>
-
-    <div class="field-label">What is this for? (Optional)</div>
-    <input id="desc" class="desc-input" type="text" autocomplete="off" placeholder="e.g. Milk & eggs, SunLife, Dinner...">
-
-    <div class="btns">
-      <button type="button" id="cancel">Cancel</button>
-      <button type="button" class="go" id="add">Save Expense</button>
+    <div class="card" id="card">
+      <div class="label">REMAINING BUDGET</div>
+      <div class="big" id="remaining">₱0.00</div>
+      <div class="barbg">
+        <div class="bar" id="bar"></div>
+      </div>
+      <div class="row"><span id="spent"></span><span id="budget"></span></div>
+      <div class="hint">tap to change budget</div>
+    </div>
+    <h2>This month's receipts</h2>
+    <div id="list"></div>
+    <div id="status"></div>
+    <div class="actions">
+      <button class="scan" id="scanBtn">📷 Scan receipt / paper</button>
+      <button class="manual-btn" id="manualBtn">✏️ Enter manually</button>
+    </div>
+    <input type="file" id="file" accept="image/*" capture="environment" hidden>
+    <div class="tools">
+      <button id="backup">Save backup</button>
+      <button id="restore">Restore backup</button>
+      <button id="changeGroup">👥 Code: <span id="groupLabel">our-budget</span></button>
+      <button id="forceUpdate" class="update-btn">🔄 Refresh app</button>
+      <input type="file" id="restoreFile" accept="application/json" hidden>
     </div>
   </div>
-</div>
 
-<div class="overlay" id="budgetBox">
-  <div class="modal">
-    <h3>Monthly budget</h3>
-    <input id="budgetInput" type="text" inputmode="decimal" placeholder="15000" autocomplete="off">
-    <div class="btns"><button id="budgetCancel">Cancel</button><button class="go" id="budgetSave">Save</button></div>
+  <div class="overlay" id="confirm">
+    <div class="modal">
+      <h3 id="modalTitle">Add expense</h3>
+      <p id="confirmMsg">Enter amount and choose category</p>
+
+      <div class="field-label">Amount (₱)</div>
+      <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+
+      <div class="field-label">Category</div>
+      <div class="cat-grid" id="catGrid">
+        <button type="button" class="cat-btn selected" data-cat="Groceries">🛒 Groceries</button>
+        <button type="button" class="cat-btn" data-cat="Food">🍔 Food</button>
+        <button type="button" class="cat-btn" data-cat="Bills">💡 Bills</button>
+        <button type="button" class="cat-btn" data-cat="Insurance">🛡️ Insurance</button>
+        <button type="button" class="cat-btn" data-cat="Transport">🚗 Transport</button>
+        <button type="button" class="cat-btn" data-cat="Shopping">🛍️ Shopping</button>
+        <button type="button" class="cat-btn" data-cat="Health">💊 Health</button>
+        <button type="button" class="cat-btn" data-cat="Personal">✨ Personal</button>
+        <button type="button" class="cat-btn" data-cat="Other">📦 Other</button>
+      </div>
+
+      <div class="field-label">What is this for? (Optional)</div>
+      <input id="desc" class="desc-input" type="text" autocomplete="off"
+        placeholder="e.g. Milk & eggs, SunLife, Dinner...">
+
+      <div class="btns">
+        <button type="button" id="cancel">Cancel</button>
+        <button type="button" class="go" id="add">Save Expense</button>
+      </div>
+    </div>
   </div>
-</div>
 
-<script src="ocr/tesseract.min.js"></script>
-<script>
-const CURRENCY = '₱';
-const KEY = 'receipt-budget-v1';
-const $ = (id) => document.getElementById(id);
+  <div class="overlay" id="budgetBox">
+    <div class="modal">
+      <h3>Monthly budget</h3>
+      <input id="budgetInput" type="text" inputmode="decimal" placeholder="15000" autocomplete="off">
+      <div class="btns"><button id="budgetCancel">Cancel</button><button class="go" id="budgetSave">Save</button></div>
+    </div>
+  </div>
 
-let data = { budget: 0, expenses: [] };
-try { data = Object.assign(data, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} };
-if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="ocr/tesseract.min.js"></script>
+  <script>
+    const CURRENCY = '₱';
+    const KEY = 'receipt-budget-v1';
+    const $ = (id) => document.getElementById(id);
 
-const money = (n) => CURRENCY + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const mk = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-const escapeHtml = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const SUPABASE_URL = 'https://aixaeatilvatgksmavjg.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_YqNsZM4yDx99M4pGWx2b4w_KBaxo_Y0';
+    let GROUP_ID = localStorage.getItem('budget-group-id') || 'our-budget';
 
-function parseAmount(val) {
-  if (!val) return 0;
-  let s = String(val).trim();
-  // Dot as thousands separator (e.g. 30.000 or 5.000 or 1.250.000, with optional decimal comma)
-  if (/^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(s)) {
-    s = s.replace(/\./g, '').replace(',', '.');
-  }
-  // Standard comma thousands separator (e.g. 30,000 or 30,000.50)
-  else if (/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(s)) {
-    s = s.replace(/,/g, '');
-  }
-  // Single dot followed by exactly 3 digits (e.g. 30.000, 5.000, 2.000)
-  else if (/^\d+\.\d{3}$/.test(s)) {
-    s = s.replace('.', '');
-  }
-  // Comma as decimal point (e.g. 30,50)
-  else if (/^\d+,\d{1,2}$/.test(s)) {
-    s = s.replace(',', '.');
-  }
-  else {
-    s = s.replace(/,/g, '');
-  }
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
-}
+    let sbClient = null;
+    if (typeof supabase !== 'undefined' && supabase.createClient) {
+      try {
+        sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        console.warn('Supabase init error:', e);
+      }
+    }
 
-function render() {
-  const now = new Date();
-  $('month').textContent = now.toLocaleString(undefined, { month: 'long', year: 'numeric' });
-  const mine = data.expenses.filter((e) => mk(new Date(e.date)) === mk(now));
-  const spent = mine.reduce((s, e) => s + e.amount, 0);
-  const remaining = data.budget - spent;
-  const pct = data.budget > 0 ? Math.min(spent / data.budget, 1) : 0;
-  $('remaining').textContent = money(remaining);
-  $('remaining').classList.toggle('over', remaining < 0);
-  $('spent').textContent = 'Spent ' + money(spent);
-  $('budget').textContent = 'Budget ' + money(data.budget);
-  const bar = $('bar');
-  bar.style.width = (pct * 100) + '%';
-  bar.style.background = remaining < 0 ? '#ff6b6b' : pct > 0.8 ? '#ffb347' : '#4cd98a';
-  const list = $('list');
-  list.innerHTML = '';
-  if (!mine.length) { list.innerHTML = '<div class="empty">No expenses yet. Tap Scan or Enter manually to add one.</div>'; return; }
-  mine.sort((a, b) => b.date.localeCompare(a.date)).forEach((e) => {
-    const row = document.createElement('div');
-    row.className = 'item';
-    const cat = e.category || 'Other';
-    const note = e.note || '';
-    const dateText = new Date(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-    const catObj = CATEGORIES.find((c) => c.id.toLowerCase() === cat.toLowerCase() || c.name.toLowerCase() === cat.toLowerCase()) || { icon: '🏷️', name: cat };
-    const hasCustomNote = note && note.trim().toLowerCase() !== cat.toLowerCase();
-    const titleText = hasCustomNote ? note : `${catObj.icon} ${catObj.name}`;
-    const subText = hasCustomNote ? `<span class="cat-pill">${catObj.icon} ${catObj.name}</span> • ${dateText}` : dateText;
+    function genId() {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
 
-    row.innerHTML = `
+    const parseDateSafe = (d) => {
+      if (!d) return new Date();
+      if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        const [y, m, day] = d.split('-').map(Number);
+        return new Date(y, m - 1, day, 12, 0, 0);
+      }
+      return new Date(d);
+    };
+
+    function updateGroupLabel() {
+      if ($('groupLabel')) $('groupLabel').textContent = GROUP_ID;
+    }
+
+    function updateCloudStatus(status, customText) {
+      const el = $('cloudStatus');
+      if (!el) return;
+      el.className = 'cloud-pill ' + (status || '');
+      if (customText) {
+        el.textContent = customText;
+        return;
+      }
+      if (status === 'syncing') {
+        el.textContent = '🔄 Syncing…';
+      } else if (status === 'offline') {
+        el.textContent = '📶 Offline mode';
+      } else if (status === 'error') {
+        el.textContent = '⚠️ Cloud error';
+      } else {
+        el.textContent = '☁️ Synced';
+      }
+    }
+
+    let data = { budget: 0, expenses: [] };
+    try { data = Object.assign(data, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { }
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { } };
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+
+    const money = (n) => CURRENCY + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const mk = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const escapeHtml = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    function parseAmount(val) {
+      if (!val) return 0;
+      let s = String(val).trim();
+      // Dot as thousands separator (e.g. 30.000 or 5.000 or 1.250.000, with optional decimal comma)
+      if (/^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(s)) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      }
+      // Standard comma thousands separator (e.g. 30,000 or 30,000.50)
+      else if (/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(s)) {
+        s = s.replace(/,/g, '');
+      }
+      // Single dot followed by exactly 3 digits (e.g. 30.000, 5.000, 2.000)
+      else if (/^\d+\.\d{3}$/.test(s)) {
+        s = s.replace('.', '');
+      }
+      // Comma as decimal point (e.g. 30,50)
+      else if (/^\d+,\d{1,2}$/.test(s)) {
+        s = s.replace(',', '.');
+      }
+      else {
+        s = s.replace(/,/g, '');
+      }
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    }
+
+    function render() {
+      const now = new Date();
+      $('month').textContent = now.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+      const mine = data.expenses.filter((e) => mk(parseDateSafe(e.date)) === mk(now));
+      const spent = mine.reduce((s, e) => s + e.amount, 0);
+      const remaining = data.budget - spent;
+      const pct = data.budget > 0 ? Math.min(spent / data.budget, 1) : 0;
+      $('remaining').textContent = money(remaining);
+      $('remaining').classList.toggle('over', remaining < 0);
+      $('spent').textContent = 'Spent ' + money(spent);
+      $('budget').textContent = 'Budget ' + money(data.budget);
+      const bar = $('bar');
+      bar.style.width = (pct * 100) + '%';
+      bar.style.background = remaining < 0 ? '#ff6b6b' : pct > 0.8 ? '#ffb347' : '#4cd98a';
+      const list = $('list');
+      list.innerHTML = '';
+      if (!mine.length) { list.innerHTML = '<div class="empty">No expenses yet. Tap Scan or Enter manually to add one.</div>'; return; }
+      mine.sort((a, b) => b.date.localeCompare(a.date)).forEach((e) => {
+        const row = document.createElement('div');
+        row.className = 'item';
+        const cat = e.category || 'Other';
+        const note = e.note || '';
+        const dateText = parseDateSafe(e.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        const catObj = CATEGORIES.find((c) => c.id.toLowerCase() === cat.toLowerCase() || c.name.toLowerCase() === cat.toLowerCase()) || { icon: '🏷️', name: cat };
+        const hasCustomNote = note && note.trim().toLowerCase() !== cat.toLowerCase();
+        const titleText = hasCustomNote ? note : `${catObj.icon} ${catObj.name}`;
+        const subText = hasCustomNote ? `<span class="cat-pill">${catObj.icon} ${catObj.name}</span> • ${dateText}` : dateText;
+
+        row.innerHTML = `
       <div class="info">
         <span class="desc">${escapeHtml(titleText)}</span>
         <span class="d">${subText}</span>
       </div>
       <span class="a">- ${money(e.amount)}</span>
     `;
-    const del = document.createElement('button');
-    del.textContent = '🗑';
-    del.setAttribute('aria-label', 'Delete');
-    del.onclick = () => {
-      const confirmLabel = hasCustomNote ? `"${note}" (${catObj.name})` : `"${catObj.name}"`;
-      if (confirm(`Delete ${confirmLabel} (${money(e.amount)})?`)) {
-        data.expenses = data.expenses.filter((x) => x.id !== e.id);
-        save();
-        render();
-      }
-    };
-    row.appendChild(del);
-    list.appendChild(row);
-  });
-}
-
-// ---------- budget ----------
-$('card').onclick = () => { $('budgetInput').value = data.budget || ''; $('budgetBox').classList.add('show'); };
-$('budgetCancel').onclick = () => $('budgetBox').classList.remove('show');
-$('budgetSave').onclick = () => {
-  const v = parseAmount($('budgetInput').value);
-  if (v > 0) { data.budget = v; save(); render(); }
-  $('budgetBox').classList.remove('show');
-};
-
-// ---------- categories ----------
-const CATEGORIES = [
-  { id: 'Groceries', name: 'Groceries', icon: '🛒' },
-  { id: 'Food', name: 'Food', icon: '🍔' },
-  { id: 'Bills', name: 'Bills', icon: '💡' },
-  { id: 'Insurance', name: 'Insurance', icon: '🛡️' },
-  { id: 'Transport', name: 'Transport', icon: '🚗' },
-  { id: 'Shopping', name: 'Shopping', icon: '🛍️' },
-  { id: 'Health', name: 'Health', icon: '💊' },
-  { id: 'Personal', name: 'Personal', icon: '✨' },
-  { id: 'Other', name: 'Other', icon: '📦' }
-];
-
-let selectedCategory = 'Groceries';
-function setCategory(catId) {
-  selectedCategory = catId || 'Groceries';
-  document.querySelectorAll('#catGrid .cat-btn').forEach((b) => {
-    b.classList.toggle('selected', b.dataset.cat.toLowerCase() === selectedCategory.toLowerCase());
-  });
-}
-document.querySelectorAll('#catGrid .cat-btn').forEach((b) => {
-  b.onclick = () => setCategory(b.dataset.cat);
-});
-
-function detectCategoryFromText(text) {
-  const t = (text || '').toLowerCase();
-  if (/insurance|sunlife|pru|manulife|axa|allianz|fwd|philam/i.test(t)) return 'Insurance';
-  if (/supermarket|grocery|groceries|puregold|sm hypermarket|robinsons super|savemore|waltermart|dali/i.test(t)) return 'Groceries';
-  if (/meralco|electric|water|maynilad|manila water|pldt|globe|smart|internet|utility|utilities/i.test(t)) return 'Bills';
-  if (/pharmacy|mercury drug|watson|generic|hospital|clinic|med|medicine/i.test(t)) return 'Health';
-  if (/gas|fuel|petron|shell|caltex|cleanfuel|seaoil|grab|angkas|taxi|fare/i.test(t)) return 'Transport';
-  if (/restaurant|cafe|coffee|starbucks|jollibee|mcdonald|kfc|chowking|mang inasal|dunkin/i.test(t)) return 'Food';
-  if (/mall|department|shopee|lazada|uniqlo|zara|h&m/i.test(t)) return 'Shopping';
-  return 'Groceries';
-}
-
-// ---------- scanning ----------
-let workerPromise = null;
-function getWorker() {
-  if (!workerPromise) {
-    const abs = (p) => new URL(p, location.href).href;
-    workerPromise = Tesseract.createWorker('eng', 1, {
-      workerPath: abs('ocr/worker.min.js'),
-      corePath: abs('ocr/core'),
-      langPath: abs('ocr/lang'),
-      workerBlobURL: false,
-      logger: (m) => { if (m.status === 'recognizing text') $('status').textContent = 'Reading receipt… ' + Math.round(m.progress * 100) + '%'; },
-    });
-  }
-  return workerPromise;
-}
-
-// shrink + grayscale + stretch contrast so the OCR reads receipts better
-async function prepare(file) {
-  let bmp;
-  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
-  catch (e) {
-    bmp = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
-  }
-  const w0 = bmp.width, h0 = bmp.height, scale = Math.min(1, 1800 / Math.max(w0, h0));
-  const c = document.createElement('canvas');
-  c.width = Math.round(w0 * scale); c.height = Math.round(h0 * scale);
-  const ctx = c.getContext('2d');
-  ctx.drawImage(bmp, 0, 0, c.width, c.height);
-  const img = ctx.getImageData(0, 0, c.width, c.height), px = img.data;
-  let lo = 255, hi = 0;
-  for (let i = 0; i < px.length; i += 4) {
-    const g = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) | 0;
-    px[i] = px[i + 1] = px[i + 2] = g;
-    if (g < lo) lo = g; if (g > hi) hi = g;
-  }
-  const range = Math.max(hi - lo, 1);
-  for (let i = 0; i < px.length; i += 4) { const v = ((px[i] - lo) * 255 / range) | 0; px[i] = px[i + 1] = px[i + 2] = v; }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
-
-function findTotal(text) {
-  const dec = /\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\b|\b\d+[.,]\d{2}\b/g;
-  const anyNum = /\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\b|\b\d+\b/g;
-  const toNum = (s) => parseAmount(s);
-  let found = null;
-  for (const line of text.split(/\r?\n/)) {
-    if (/sub\s*-?\s*total/i.test(line)) continue;
-    if (/grand\s*total|total\s*due|amount\s*due|balance\s*due|total/i.test(line)) {
-      const n = line.match(anyNum);
-      if (n) found = toNum(n[n.length - 1]);
-    }
-  }
-  if (found) return found;
-  const all = (text.match(dec) || []).map(toNum);
-  return all.length ? Math.max(...all) : 0;
-}
-
-function showInputModal(title, msg, prefill = '', defaultCat = 'Groceries', defaultNote = '') {
-  $('modalTitle').textContent = title;
-  $('confirmMsg').textContent = msg;
-  $('amount').value = prefill;
-  $('desc').value = defaultNote;
-  setCategory(defaultCat || 'Groceries');
-  $('confirm').classList.add('show');
-  setTimeout(() => {
-    if (prefill) {
-      $('desc').focus();
-    } else {
-      $('amount').focus();
-    }
-  }, 100);
-}
-
-$('manualBtn').onclick = () => {
-  showInputModal('Add expense', 'Enter amount and select category:', '', 'Groceries', '');
-};
-
-$('scanBtn').onclick = () => $('file').click();
-$('file').onchange = async (ev) => {
-  const f = ev.target.files[0];
-  ev.target.value = '';
-  if (!f) return;
-  const btn = $('scanBtn');
-  btn.setAttribute('aria-busy', 'true');
-  btn.disabled = true;
-  $('status').textContent = 'Reading receipt / paper…';
-  try {
-    const canvas = await prepare(f);
-    const worker = await getWorker();
-    const { data: out } = await worker.recognize(canvas);
-    const rawText = out.text || '';
-    const total = findTotal(rawText);
-    const detectedCat = detectCategoryFromText(rawText);
-    if (total > 0) {
-      showInputModal('Detected total', 'Check amount and category:', total.toFixed(2), detectedCat, 'Receipt');
-    } else {
-      showInputModal('Enter amount', "Couldn't detect total. Type it in below:", '', detectedCat, '');
-    }
-  } catch (e) {
-    showInputModal('Enter amount', "Couldn't read the image. Type it in below:", '', 'Groceries', '');
-  }
-  $('status').textContent = '';
-  btn.removeAttribute('aria-busy');
-  btn.disabled = false;
-};
-$('cancel').onclick = () => $('confirm').classList.remove('show');
-$('add').onclick = () => {
-  const v = parseAmount($('amount').value);
-  const note = $('desc').value.trim();
-  if (v > 0) {
-    data.expenses.push({
-      id: String(Date.now()),
-      amount: v,
-      category: selectedCategory,
-      note: note || selectedCategory,
-      date: new Date().toISOString()
-    });
-    save();
-    render();
-  }
-  $('confirm').classList.remove('show');
-};
-
-// ---------- backup ----------
-$('backup').onclick = () => {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
-  a.download = 'receipt-budget-backup.json';
-  a.click();
-};
-$('restore').onclick = () => $('restoreFile').click();
-$('restoreFile').onchange = async (ev) => {
-  const f = ev.target.files[0];
-  ev.target.value = '';
-  if (!f) return;
-  try {
-    const d = JSON.parse(await f.text());
-    if (typeof d.budget !== 'number' || !Array.isArray(d.expenses)) throw 0;
-    if (confirm('Replace what is on this phone with the backup?')) { data = d; save(); render(); }
-  } catch (e) { alert("That file isn't a valid backup."); }
-};
-
-// ---------- refresh / force update app ----------
-$('forceUpdate').onclick = async () => {
-  if (confirm('Fetch the latest version of the app and refresh?')) {
-    if ('serviceWorker' in navigator) {
-      try {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const r of regs) await r.unregister();
-      } catch (e) {}
-    }
-    if ('caches' in window) {
-      try {
-        const keys = await caches.keys();
-        for (const k of keys) await caches.delete(k);
-      } catch (e) {}
-    }
-    window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
-  }
-};
-
-// ---------- start ----------
-const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
-if (isIOS && !standalone && !localStorage.getItem('tip-closed')) $('tip').classList.add('show');
-$('tipx').onclick = () => { $('tip').classList.remove('show'); localStorage.setItem('tip-closed', '1'); };
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=4').then((reg) => {
-    reg.update();
-    reg.onupdatefound = () => {
-      const w = reg.installing;
-      if (w) {
-        w.onstatechange = () => {
-          if (w.state === 'installed' && navigator.serviceWorker.controller) {
-            window.location.reload();
+        const del = document.createElement('button');
+        del.textContent = '🗑';
+        del.setAttribute('aria-label', 'Delete');
+        del.onclick = () => {
+          const confirmLabel = hasCustomNote ? `"${note}" (${catObj.name})` : `"${catObj.name}"`;
+          if (confirm(`Delete ${confirmLabel} (${money(e.amount)})?`)) {
+            const delId = e.id;
+            data.expenses = data.expenses.filter((x) => x.id !== delId);
+            save();
+            render();
+            if (sbClient) {
+              updateCloudStatus('syncing');
+              sbClient.from('expenses').delete().eq('id', delId).then(({ error }) => {
+                if (error) {
+                  console.error('Delete cloud error:', error);
+                  updateCloudStatus('offline');
+                } else {
+                  updateCloudStatus('synced');
+                }
+              });
+            }
           }
         };
+        row.appendChild(del);
+        list.appendChild(row);
+      });
+    }
+
+    // ---------- budget ----------
+    $('card').onclick = () => { $('budgetInput').value = data.budget || ''; $('budgetBox').classList.add('show'); };
+    $('budgetCancel').onclick = () => $('budgetBox').classList.remove('show');
+    $('budgetSave').onclick = () => {
+      const v = parseAmount($('budgetInput').value);
+      if (v > 0) {
+        data.budget = v;
+        save();
+        render();
+        if (sbClient) {
+          updateCloudStatus('syncing');
+          sbClient.from('budget_settings').upsert({
+            group_id: GROUP_ID,
+            monthly_budget: v,
+            updated_at: new Date().toISOString()
+          }).then(({ error }) => {
+            if (error) {
+              console.error('Budget sync error:', error);
+              updateCloudStatus('offline');
+            } else {
+              updateCloudStatus('synced');
+            }
+          });
+        }
+      }
+      $('budgetBox').classList.remove('show');
+    };
+
+    // ---------- categories ----------
+    const CATEGORIES = [
+      { id: 'Groceries', name: 'Groceries', icon: '🛒' },
+      { id: 'Food', name: 'Food', icon: '🍔' },
+      { id: 'Bills', name: 'Bills', icon: '💡' },
+      { id: 'Insurance', name: 'Insurance', icon: '🛡️' },
+      { id: 'Transport', name: 'Transport', icon: '🚗' },
+      { id: 'Shopping', name: 'Shopping', icon: '🛍️' },
+      { id: 'Health', name: 'Health', icon: '💊' },
+      { id: 'Personal', name: 'Personal', icon: '✨' },
+      { id: 'Other', name: 'Other', icon: '📦' }
+    ];
+
+    let selectedCategory = 'Groceries';
+    function setCategory(catId) {
+      selectedCategory = catId || 'Groceries';
+      document.querySelectorAll('#catGrid .cat-btn').forEach((b) => {
+        b.classList.toggle('selected', b.dataset.cat.toLowerCase() === selectedCategory.toLowerCase());
+      });
+    }
+    document.querySelectorAll('#catGrid .cat-btn').forEach((b) => {
+      b.onclick = () => setCategory(b.dataset.cat);
+    });
+
+    function detectCategoryFromText(text) {
+      const t = (text || '').toLowerCase();
+      if (/insurance|sunlife|pru|manulife|axa|allianz|fwd|philam/i.test(t)) return 'Insurance';
+      if (/supermarket|grocery|groceries|puregold|sm hypermarket|robinsons super|savemore|waltermart|dali/i.test(t)) return 'Groceries';
+      if (/meralco|electric|water|maynilad|manila water|pldt|globe|smart|internet|utility|utilities/i.test(t)) return 'Bills';
+      if (/pharmacy|mercury drug|watson|generic|hospital|clinic|med|medicine/i.test(t)) return 'Health';
+      if (/gas|fuel|petron|shell|caltex|cleanfuel|seaoil|grab|angkas|taxi|fare/i.test(t)) return 'Transport';
+      if (/restaurant|cafe|coffee|starbucks|jollibee|mcdonald|kfc|chowking|mang inasal|dunkin/i.test(t)) return 'Food';
+      if (/mall|department|shopee|lazada|uniqlo|zara|h&m/i.test(t)) return 'Shopping';
+      return 'Groceries';
+    }
+
+    // ---------- scanning ----------
+    let workerPromise = null;
+    function getWorker() {
+      if (!workerPromise) {
+        const abs = (p) => new URL(p, location.href).href;
+        workerPromise = Tesseract.createWorker('eng', 1, {
+          workerPath: abs('ocr/worker.min.js'),
+          corePath: abs('ocr/core'),
+          langPath: abs('ocr/lang'),
+          workerBlobURL: false,
+          logger: (m) => { if (m.status === 'recognizing text') $('status').textContent = 'Reading receipt… ' + Math.round(m.progress * 100) + '%'; },
+        });
+      }
+      return workerPromise;
+    }
+
+    // shrink + grayscale + stretch contrast so the OCR reads receipts better
+    async function prepare(file) {
+      let bmp;
+      try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+      catch (e) {
+        bmp = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+      }
+      const w0 = bmp.width, h0 = bmp.height, scale = Math.min(1, 1800 / Math.max(w0, h0));
+      const c = document.createElement('canvas');
+      c.width = Math.round(w0 * scale); c.height = Math.round(h0 * scale);
+      const ctx = c.getContext('2d');
+      ctx.drawImage(bmp, 0, 0, c.width, c.height);
+      const img = ctx.getImageData(0, 0, c.width, c.height), px = img.data;
+      let lo = 255, hi = 0;
+      for (let i = 0; i < px.length; i += 4) {
+        const g = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) | 0;
+        px[i] = px[i + 1] = px[i + 2] = g;
+        if (g < lo) lo = g; if (g > hi) hi = g;
+      }
+      const range = Math.max(hi - lo, 1);
+      for (let i = 0; i < px.length; i += 4) { const v = ((px[i] - lo) * 255 / range) | 0; px[i] = px[i + 1] = px[i + 2] = v; }
+      ctx.putImageData(img, 0, 0);
+      return c;
+    }
+
+    function findTotal(text) {
+      const dec = /\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\b|\b\d+[.,]\d{2}\b/g;
+      const anyNum = /\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\b|\b\d+\b/g;
+      const toNum = (s) => parseAmount(s);
+      let found = null;
+      for (const line of text.split(/\r?\n/)) {
+        if (/sub\s*-?\s*total/i.test(line)) continue;
+        if (/grand\s*total|total\s*due|amount\s*due|balance\s*due|total/i.test(line)) {
+          const n = line.match(anyNum);
+          if (n) found = toNum(n[n.length - 1]);
+        }
+      }
+      if (found) return found;
+      const all = (text.match(dec) || []).map(toNum);
+      return all.length ? Math.max(...all) : 0;
+    }
+
+    function showInputModal(title, msg, prefill = '', defaultCat = 'Groceries', defaultNote = '') {
+      $('modalTitle').textContent = title;
+      $('confirmMsg').textContent = msg;
+      $('amount').value = prefill;
+      $('desc').value = defaultNote;
+      setCategory(defaultCat || 'Groceries');
+      $('confirm').classList.add('show');
+      setTimeout(() => {
+        if (prefill) {
+          $('desc').focus();
+        } else {
+          $('amount').focus();
+        }
+      }, 100);
+    }
+
+    $('manualBtn').onclick = () => {
+      showInputModal('Add expense', 'Enter amount and select category:', '', 'Groceries', '');
+    };
+
+    $('scanBtn').onclick = () => $('file').click();
+    $('file').onchange = async (ev) => {
+      const f = ev.target.files[0];
+      ev.target.value = '';
+      if (!f) return;
+      const btn = $('scanBtn');
+      btn.setAttribute('aria-busy', 'true');
+      btn.disabled = true;
+      $('status').textContent = 'Reading receipt / paper…';
+      try {
+        const canvas = await prepare(f);
+        const worker = await getWorker();
+        const { data: out } = await worker.recognize(canvas);
+        const rawText = out.text || '';
+        const total = findTotal(rawText);
+        const detectedCat = detectCategoryFromText(rawText);
+        if (total > 0) {
+          showInputModal('Detected total', 'Check amount and category:', total.toFixed(2), detectedCat, 'Receipt');
+        } else {
+          showInputModal('Enter amount', "Couldn't detect total. Type it in below:", '', detectedCat, '');
+        }
+      } catch (e) {
+        showInputModal('Enter amount', "Couldn't read the image. Type it in below:", '', 'Groceries', '');
+      }
+      $('status').textContent = '';
+      btn.removeAttribute('aria-busy');
+      btn.disabled = false;
+    };
+    $('cancel').onclick = () => $('confirm').classList.remove('show');
+    $('add').onclick = () => {
+      const v = parseAmount($('amount').value);
+      const note = $('desc').value.trim();
+      if (v > 0) {
+        const newId = genId();
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const item = {
+          id: newId,
+          amount: v,
+          category: selectedCategory,
+          note: note || selectedCategory,
+          date: dateStr
+        };
+        // 1. Instant local display
+        data.expenses.unshift(item);
+        save();
+        render();
+
+        // 2. Sync to Supabase cloud
+        if (sbClient) {
+          updateCloudStatus('syncing');
+          sbClient.from('expenses').insert([{
+            id: newId,
+            date: dateStr,
+            amount: v,
+            category: selectedCategory,
+            note: note || selectedCategory,
+            group_id: GROUP_ID
+          }]).then(({ error }) => {
+            if (error) {
+              console.error('Insert error:', error);
+              updateCloudStatus('offline');
+            } else {
+              updateCloudStatus('synced');
+            }
+          });
+        }
+      }
+      $('confirm').classList.remove('show');
+    };
+
+    // ---------- shared group code ----------
+    $('changeGroup').onclick = () => {
+      const code = prompt('Enter a shared budget code (e.g. family-budget):\nAll phones with this code will share the same expenses.', GROUP_ID);
+      if (code && code.trim() && code.trim() !== GROUP_ID) {
+        GROUP_ID = code.trim();
+        localStorage.setItem('budget-group-id', GROUP_ID);
+        updateGroupLabel();
+        window.location.reload();
       }
     };
-  }).catch(() => {});
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
-  });
-}
-render();
-if (!data.budget) $('card').click();
-</script>
+    $('cloudStatus').onclick = () => syncWithSupabase();
+
+    // ---------- backup & restore ----------
+    $('backup').onclick = () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+      a.download = 'receipt-budget-backup.json';
+      a.click();
+    };
+    $('restore').onclick = () => $('restoreFile').click();
+    $('restoreFile').onchange = async (ev) => {
+      const f = ev.target.files[0];
+      ev.target.value = '';
+      if (!f) return;
+      try {
+        const d = JSON.parse(await f.text());
+        if (typeof d.budget !== 'number' || !Array.isArray(d.expenses)) throw 0;
+        if (confirm('Replace what is on this phone with the backup?')) {
+          data = d;
+          save();
+          render();
+          if (confirm('Do you also want to push this backup to your shared cloud database?')) {
+            updateCloudStatus('syncing');
+            if (sbClient) {
+              for (const item of data.expenses) {
+                const dStr = (item.date && item.date.slice(0, 10)) || new Date().toISOString().slice(0, 10);
+                const validId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id) ? item.id : genId();
+                item.id = validId;
+                await sbClient.from('expenses').upsert({
+                  id: validId,
+                  date: dStr,
+                  amount: item.amount,
+                  category: item.category || 'Other',
+                  note: item.note || '',
+                  group_id: GROUP_ID
+                });
+              }
+              if (data.budget > 0) {
+                await sbClient.from('budget_settings').upsert({
+                  group_id: GROUP_ID,
+                  monthly_budget: data.budget,
+                  updated_at: new Date().toISOString()
+                });
+              }
+              updateCloudStatus('synced');
+            }
+          }
+        }
+      } catch (e) { alert("That file isn't a valid backup."); }
+    };
+
+    // ---------- refresh / force update app ----------
+    $('forceUpdate').onclick = async () => {
+      if (confirm('Fetch the latest version of the app and refresh?')) {
+        if ('serviceWorker' in navigator) {
+          try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const r of regs) await r.unregister();
+          } catch (e) { }
+        }
+        if ('caches' in window) {
+          try {
+            const keys = await caches.keys();
+            for (const k of keys) await caches.delete(k);
+          } catch (e) { }
+        }
+        window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
+      }
+    };
+
+    // ---------- cloud sync & real-time ----------
+    async function syncWithSupabase() {
+      if (!sbClient) {
+        updateCloudStatus('offline');
+        return;
+      }
+      if (!navigator.onLine) {
+        updateCloudStatus('offline');
+        return;
+      }
+      updateCloudStatus('syncing');
+      try {
+        // 1. Fetch budget
+        const { data: bData, error: bErr } = await sbClient
+          .from('budget_settings')
+          .select('monthly_budget')
+          .eq('group_id', GROUP_ID)
+          .maybeSingle();
+
+        if (!bErr && bData && typeof bData.monthly_budget === 'number') {
+          data.budget = Number(bData.monthly_budget);
+        } else if (!bErr && !bData && data.budget > 0) {
+          // Initialize cloud budget with local budget if empty
+          await sbClient.from('budget_settings').upsert({
+            group_id: GROUP_ID,
+            monthly_budget: data.budget,
+            updated_at: new Date().toISOString()
+          });
+        }
+
+        // 2. Fetch expenses
+        const { data: expRows, error: expErr } = await sbClient
+          .from('expenses')
+          .select('*')
+          .eq('group_id', GROUP_ID)
+          .order('date', { ascending: false });
+
+        if (!expErr && expRows) {
+          const cloudIds = new Set(expRows.map(r => r.id));
+          const pendingSync = data.expenses.filter(e => !cloudIds.has(e.id));
+          if (pendingSync.length > 0) {
+            for (const item of pendingSync) {
+              const itemDate = (item.date && item.date.slice(0, 10)) || new Date().toISOString().slice(0, 10);
+              const validId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id) ? item.id : genId();
+              item.id = validId;
+              await sbClient.from('expenses').insert([{
+                id: validId,
+                date: itemDate,
+                amount: item.amount,
+                category: item.category || 'Other',
+                note: item.note || '',
+                group_id: GROUP_ID
+              }]);
+            }
+            const { data: refetched } = await sbClient
+              .from('expenses')
+              .select('*')
+              .eq('group_id', GROUP_ID)
+              .order('date', { ascending: false });
+            if (refetched) {
+              data.expenses = refetched.map(r => ({
+                id: r.id,
+                amount: Number(r.amount),
+                category: r.category,
+                note: r.note,
+                date: r.date
+              }));
+            }
+          } else {
+            data.expenses = expRows.map(r => ({
+              id: r.id,
+              amount: Number(r.amount),
+              category: r.category,
+              note: r.note,
+              date: r.date
+            }));
+          }
+
+          save();
+          render();
+          updateCloudStatus('synced');
+        } else if (expErr) {
+          console.error('Fetch expenses error:', expErr);
+          updateCloudStatus('offline');
+        }
+      } catch (err) {
+        console.warn('Sync error:', err);
+        updateCloudStatus('offline');
+      }
+    }
+
+    function initRealtime() {
+      if (!sbClient) return;
+      try {
+        sbClient
+          .channel('shared-budget-' + GROUP_ID)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `group_id=eq.${GROUP_ID}` }, (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const row = payload.new;
+              if (!data.expenses.some(e => e.id === row.id)) {
+                data.expenses.unshift({
+                  id: row.id,
+                  amount: Number(row.amount),
+                  category: row.category,
+                  note: row.note,
+                  date: row.date
+                });
+                save();
+                render();
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const oldId = payload.old.id;
+              if (data.expenses.some(e => e.id === oldId)) {
+                data.expenses = data.expenses.filter(e => e.id !== oldId);
+                save();
+                render();
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              const row = payload.new;
+              const idx = data.expenses.findIndex(e => e.id === row.id);
+              if (idx !== -1) {
+                data.expenses[idx] = {
+                  id: row.id,
+                  amount: Number(row.amount),
+                  category: row.category,
+                  note: row.note,
+                  date: row.date
+                };
+                save();
+                render();
+              }
+            }
+            updateCloudStatus('synced');
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_settings', filter: `group_id=eq.${GROUP_ID}` }, (payload) => {
+            if (payload.new && typeof payload.new.monthly_budget === 'number') {
+              data.budget = Number(payload.new.monthly_budget);
+              save();
+              render();
+            }
+            updateCloudStatus('synced');
+          })
+          .subscribe();
+      } catch (e) {
+        console.warn('Realtime subscription error:', e);
+      }
+    }
+
+    window.addEventListener('online', () => {
+      updateCloudStatus('syncing');
+      syncWithSupabase();
+    });
+    window.addEventListener('offline', () => {
+      updateCloudStatus('offline');
+    });
+
+    // ---------- start ----------
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+    if (isIOS && !standalone && !localStorage.getItem('tip-closed')) $('tip').classList.add('show');
+    $('tipx').onclick = () => { $('tip').classList.remove('show'); localStorage.setItem('tip-closed', '1'); };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js?v=5').then((reg) => {
+        reg.update();
+        reg.onupdatefound = () => {
+          const w = reg.installing;
+          if (w) {
+            w.onstatechange = () => {
+              if (w.state === 'installed' && navigator.serviceWorker.controller) {
+                window.location.reload();
+              }
+            };
+          }
+        };
+      }).catch(() => { });
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    }
+
+    updateGroupLabel();
+    render();
+    syncWithSupabase();
+    initRealtime();
+    if (!data.budget) $('card').click();
+  </script>
 </body>
+
 </html>

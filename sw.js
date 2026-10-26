@@ -1,4 +1,4 @@
-const CACHE = 'receipt-budget-v4'; // change the number when you update any file
+const CACHE = 'receipt-budget-v5'; // change the number when you update any file
 const FILES = [
   './', './index.html', './manifest.json',
   './icon-180.png', './icon-192.png', './icon-512.png',
@@ -24,6 +24,8 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  if (e.request.url.includes('supabase.co')) return;
+
   const isHtml = e.request.mode === 'navigate' ||
                  (e.request.headers.get('accept') && e.request.headers.get('accept').includes('text/html')) ||
                  e.request.url.endsWith('/') ||
